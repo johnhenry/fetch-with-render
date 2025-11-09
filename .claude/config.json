@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/scripts/setup.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "environment": {
+    "NGROK_TOKEN": "",
+    "PORT": "8080"
+  }
+}

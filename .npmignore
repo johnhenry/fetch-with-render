@@ -1,0 +1,36 @@
+# Source files
+src/**/*.rs
+*.toml
+build.rs
+.cargo/
+
+# Development
+.git/
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+target/
+node_modules/
+
+# Tests
+tests/
+examples/
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.travis.yml
+.gitlab-ci.yml
+azure-pipelines.yml
+
+# Misc
+.DS_Store
+Thumbs.db
+.env
+.env.*

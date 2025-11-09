@@ -1,0 +1,68 @@
+{
+  "name": "fetch-with-render",
+  "version": "0.1.0",
+  "description": "fetch, but with real rendering - a drop-in replacement for fetch with native WebView rendering",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "*.node",
+    "!src/**/*.rs"
+  ],
+  "scripts": {
+    "build": "npm run build:rust && npm run build:js",
+    "build:rust": "napi build --platform --release",
+    "build:js": "node scripts/build-js.mjs",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "node scripts/prepublish-check.mjs",
+    "test": "node --test tests/**/*.test.mjs",
+    "artifacts": "napi artifacts",
+    "universal": "napi universal",
+    "version": "napi version",
+    "demo": "node examples/quick-demo.mjs",
+    "demo:comparison": "node examples/comparison-demo.mjs",
+    "demo:spa": "node examples/spa-scraping.mjs",
+    "demo:basic": "node examples/basic.mjs",
+    "demo:advanced": "node examples/advanced.mjs"
+  },
+  "napi": {
+    "name": "fetch-with-render",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "aarch64-apple-darwin",
+        "x86_64-pc-windows-msvc",
+        "x86_64-unknown-linux-gnu"
+      ]
+    }
+  },
+  "keywords": [
+    "fetch",
+    "render",
+    "webview",
+    "headless",
+    "scraping",
+    "javascript",
+    "dom",
+    "html"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/johnhenry/fetch-with-render.git"
+  }
+}
