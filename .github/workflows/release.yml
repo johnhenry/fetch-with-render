@@ -32,17 +32,25 @@ jobs:
             target: aarch64-unknown-linux-gnu
             build: |
               # Configure ARM64 package sources (use ports.ubuntu.com for ARM64)
-              # Restrict existing sources to amd64 only (all files)
-              sudo sed -i 's/^deb \(http\|https\)/deb [arch=amd64] \1/g' /etc/apt/sources.list
-              sudo sed -i 's/^deb-src \(http\|https\)/deb-src [arch=amd64] \1/g' /etc/apt/sources.list
-              sudo find /etc/apt/sources.list.d/ -name "*.list" -exec sed -i 's/^deb \(http\|https\)/deb [arch=amd64] \1/g' {} \;
-              sudo find /etc/apt/sources.list.d/ -name "*.list" -exec sed -i 's/^deb-src \(http\|https\)/deb-src [arch=amd64] \1/g' {} \;
+              # Backup and disable existing sources
+              sudo mv /etc/apt/sources.list /etc/apt/sources.list.backup
+              sudo mkdir -p /etc/apt/sources.list.d.backup
+              sudo mv /etc/apt/sources.list.d/* /etc/apt/sources.list.d.backup/ 2>/dev/null || true
 
-              # Add ARM64 sources from ports.ubuntu.com
-              echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-              echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-              echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
-              echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list
+              # Create new sources.list with proper multiarch configuration
+              cat << 'EOF' | sudo tee /etc/apt/sources.list
+# AMD64 sources (main Ubuntu archive)
+deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse
+deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse
+deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-backports main restricted universe multiverse
+deb [arch=amd64] http://security.ubuntu.com/ubuntu noble-security main restricted universe multiverse
+
+# ARM64 sources (Ubuntu Ports)
+deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main restricted universe multiverse
+deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-updates main restricted universe multiverse
+deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-backports main restricted universe multiverse
+deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-security main restricted universe multiverse
+EOF
 
               # Install ARM64 cross-compilation toolchain
               sudo dpkg --add-architecture arm64
