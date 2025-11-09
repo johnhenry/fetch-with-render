@@ -257,14 +257,16 @@ fn run_event_loop(event_loop: &mut EventLoop<()>, _target_window_id: WindowId) {
                     ..
                 } = &event
                 {
-                    if event_window_id == window_id
-                        && window_event == &WindowEvent::CloseRequested
+                    if event_window_id == window_id && window_event == &WindowEvent::CloseRequested
                     {
-                        let result = state.html_result.borrow_mut().take().ok_or(
-                            RenderError::Unknown(
-                                "Window closed before HTML captured".to_string(),
-                            ),
-                        );
+                        let result =
+                            state
+                                .html_result
+                                .borrow_mut()
+                                .take()
+                                .ok_or(RenderError::Unknown(
+                                    "Window closed before HTML captured".to_string(),
+                                ));
                         let _ = state.result_tx.send(result);
                         completed_windows.push(*window_id);
                     }
