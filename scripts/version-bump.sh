@@ -17,7 +17,8 @@ fi
 echo "🔄 Bumping version ($BUMP_TYPE)..."
 
 # Bump npm version and capture new version
-NEW_VERSION=$(npm version $BUMP_TYPE --no-git-tag-version | sed 's/v//')
+npm version $BUMP_TYPE --no-git-tag-version > /dev/null 2>&1
+NEW_VERSION=$(node -p "require('./package.json').version")
 
 echo "📦 Updated package.json to $NEW_VERSION"
 
