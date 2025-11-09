@@ -65,7 +65,9 @@ impl From<RenderError> for napi::Error {
             RenderError::WebViewCreation(msg) => {
                 napi::Error::from_reason(format!("WebViewCreationError: {}", msg))
             }
-            RenderError::Timeout => napi::Error::from_reason("RenderTimeoutError: Rendering timed out"),
+            RenderError::Timeout => {
+                napi::Error::from_reason("RenderTimeoutError: Rendering timed out")
+            }
             RenderError::ScriptExecution(msg) => {
                 napi::Error::from_reason(format!("ScriptError: {}", msg))
             }
@@ -113,7 +115,13 @@ fn setup_render(
     url: &str,
     opts: RenderOptions,
     timeout_ms: i64,
-) -> std::result::Result<(WindowId, mpsc::Receiver<std::result::Result<String, RenderError>>), RenderError> {
+) -> std::result::Result<
+    (
+        WindowId,
+        mpsc::Receiver<std::result::Result<String, RenderError>>,
+    ),
+    RenderError,
+> {
     let window = WindowBuilder::new()
         .with_visible(false)
         .with_title("fetch-with-render")
@@ -252,14 +260,11 @@ fn run_event_loop(event_loop: &mut EventLoop<()>, _target_window_id: WindowId) {
                     if event_window_id == window_id {
                         match window_event {
                             WindowEvent::CloseRequested => {
-                                let result = state
-                                    .html_result
-                                    .lock()
-                                    .unwrap()
-                                    .take()
-                                    .ok_or(RenderError::Unknown(
+                                let result = state.html_result.lock().unwrap().take().ok_or(
+                                    RenderError::Unknown(
                                         "Window closed before HTML captured".to_string(),
-                                    ));
+                                    ),
+                                );
                                 let _ = state.result_tx.send(result);
                                 completed_windows.push(*window_id);
                             }
@@ -293,7 +298,6 @@ fn run_event_loop(event_loop: &mut EventLoop<()>, _target_window_id: WindowId) {
         }
     });
 }
-
 
 #[cfg(test)]
 mod tests {
