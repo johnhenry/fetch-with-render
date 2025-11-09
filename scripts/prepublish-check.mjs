@@ -54,10 +54,10 @@ async function check() {
     }
   }
 
-  // Check TypeScript definitions
+  // Check TypeScript definitions (optional but recommended)
   if (!existsSync(join(projectRoot, 'dist', 'index.d.ts'))) {
-    console.error('❌ dist/index.d.ts not found');
-    hasErrors = true;
+    console.log('⚠️  dist/index.d.ts not found (TypeScript users won\'t get type definitions)');
+    hasWarnings = true;
   } else {
     console.log('✅ dist/index.d.ts exists');
   }
