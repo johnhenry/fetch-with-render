@@ -8,7 +8,8 @@ dist/
 target/
 *.node
 index.js
-index.d.ts
+# Note: We DO want src/index.d.ts in git, just not the built one in root
+/index.d.ts
 
 # Logs
 npm-debug.log*

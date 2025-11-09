@@ -256,10 +256,16 @@ jobs:
         with:
           path: artifacts
 
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -name "*.node" -exec cp {} release-assets/ \;
+          ls -la release-assets/
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/**/*.node
+          files: release-assets/*.node
           draft: false
           prerelease: false
         env:
