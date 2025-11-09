@@ -33,7 +33,7 @@ jobs:
             build: |
               # Use Docker with QEMU for ARM64 cross-compilation
               docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-              docker run --rm -v $PWD:/build -w /build \
+              docker run --rm --platform linux/arm64 -v $PWD:/build -w /build \
                 arm64v8/ubuntu:22.04 \
                 bash -c "
                   apt-get update && \
@@ -160,7 +160,7 @@ jobs:
         if: matrix.settings.use_docker == true
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker run --rm -v $PWD:/build -w /build \
+          docker run --rm --platform linux/arm64 -v $PWD:/build -w /build \
             arm64v8/ubuntu:22.04 \
             bash -c "
               apt-get update && \
