@@ -24,7 +24,7 @@
     "build:js": "node scripts/build-js.mjs",
     "build:debug": "napi build --platform",
     "prepublishOnly": "node scripts/prepublish-check.mjs",
-    "test": "node --test tests/**/*.test.mjs",
+    "test": "node --test tests/",
     "artifacts": "napi artifacts",
     "universal": "napi universal",
     "version": "napi version",
