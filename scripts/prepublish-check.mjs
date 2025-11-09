@@ -18,10 +18,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..');
 
 const REQUIRED_PLATFORMS = [
-  'darwin-x64',
   'darwin-arm64',
   'linux-x64-gnu',
+  'linux-arm64-gnu',
   'win32-x64-msvc',
+];
+
+const OPTIONAL_PLATFORMS = [
+  'darwin-x64', // Optional: Users can compile from source if needed
 ];
 
 async function check() {
@@ -98,7 +102,7 @@ async function check() {
 
   // Check versions match
   const packageJson = await import(join(projectRoot, 'package.json'), {
-    assert: { type: 'json' }
+    with: { type: 'json' }
   });
 
   const cargoToml = await import('fs').then(fs =>

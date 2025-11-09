@@ -211,15 +211,15 @@ jobs:
           cp artifacts/bindings-aarch64-unknown-linux-gnu/index.cjs . || \
           cp artifacts/bindings-x86_64-pc-windows-msvc/index.cjs .
 
-          # Copy dist/ from any artifact (they're all the same)
-          cp -r artifacts/bindings-x86_64-apple-darwin/dist . || \
-          cp -r artifacts/bindings-aarch64-apple-darwin/dist . || \
-          cp -r artifacts/bindings-x86_64-unknown-linux-gnu/dist . || \
-          cp -r artifacts/bindings-aarch64-unknown-linux-gnu/dist . || \
-          cp -r artifacts/bindings-x86_64-pc-windows-msvc/dist .
-
-          echo "Listing package contents:"
+          echo "Listing native binaries:"
           ls -la *.node *.cjs
+
+      - name: Build JavaScript and TypeScript definitions
+        run: npm run build:js
+
+      - name: Verify build output
+        run: |
+          echo "Verifying dist/ directory:"
           ls -la dist/
 
       - name: List package contents
