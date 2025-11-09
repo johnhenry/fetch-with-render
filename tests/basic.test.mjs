@@ -29,13 +29,6 @@ test('RenderableResponse can call text()', async () => {
 });
 
 test('render() returns HTML string', async (t) => {
-  // This test requires a working WebView environment
-  // Skip in CI environments without display
-  if (process.env.CI || !process.env.DISPLAY) {
-    t.skip('Skipping render test in headless environment');
-    return;
-  }
-
   const res = await fetch('https://example.com');
   const html = await res.render({ timeout: 10000 });
 
@@ -45,12 +38,6 @@ test('render() returns HTML string', async (t) => {
 });
 
 test('render() accepts options', async (t) => {
-  // Skip in CI environments
-  if (process.env.CI || !process.env.DISPLAY) {
-    t.skip('Skipping render test in headless environment');
-    return;
-  }
-
   const res = await fetch('https://example.com');
   const html = await res.render({
     timeout: 5000,
