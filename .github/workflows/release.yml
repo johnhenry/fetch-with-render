@@ -31,20 +31,22 @@ jobs:
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             build: |
-              # Use Docker with QEMU for ARM64 cross-compilation
-              docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-              docker run --rm --platform linux/arm64 -v $PWD:/build -w /build \
-                arm64v8/ubuntu:22.04 \
-                bash -c "
-                  apt-get update && \
-                  apt-get install -y curl build-essential libwebkit2gtk-4.0-dev libgtk-3-dev pkg-config && \
-                  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-                  . \$HOME/.cargo/env && \
-                  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-                  apt-get install -y nodejs && \
-                  npm install && \
-                  npm run build:rust
-                "
+              # Install ARM64 cross-compilation toolchain
+              sudo dpkg --add-architecture arm64
+              sudo apt-get update
+              sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+              sudo apt-get install -y libwebkit2gtk-4.0-dev:arm64 libgtk-3-dev:arm64 pkg-config
+
+              # Add ARM64 Rust target
+              rustup target add aarch64-unknown-linux-gnu
+
+              # Configure environment for cross-compilation
+              export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
+              export PKG_CONFIG_ALLOW_CROSS=1
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+
+              # Build
+              npm run build:rust -- --target aarch64-unknown-linux-gnu
           - host: windows-latest
             target: x86_64-pc-windows-msvc
             build: npm run build:rust
@@ -113,11 +115,9 @@ jobs:
             target: x86_64-apple-darwin
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            use_docker: true
           - host: windows-latest
             target: x86_64-pc-windows-msvc
+          # ARM64 Linux: Cross-compiled, skip testing (can't run ARM64 on x86_64 host)
 
     name: Test - ${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
@@ -144,31 +144,15 @@ jobs:
         with:
           name: bindings-${{ matrix.settings.target }}
 
-      - name: Run tests (native)
-        if: matrix.settings.use_docker != true
+      - name: Run tests (macOS/Windows)
+        if: matrix.settings.host != 'ubuntu-latest'
         run: npm test
         env:
           CI: true
 
-      - name: Run tests (with xvfb on x64 Linux)
-        if: matrix.settings.host == 'ubuntu-latest' && matrix.settings.use_docker != true
+      - name: Run tests (Linux x64 with xvfb)
+        if: matrix.settings.host == 'ubuntu-latest'
         run: xvfb-run -a npm test
-        env:
-          CI: true
-
-      - name: Run tests (ARM64 Linux with Docker)
-        if: matrix.settings.use_docker == true
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker run --rm --platform linux/arm64 -v $PWD:/build -w /build \
-            arm64v8/ubuntu:22.04 \
-            bash -c "
-              apt-get update && \
-              apt-get install -y curl libwebkit2gtk-4.0-37 xvfb && \
-              curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-              apt-get install -y nodejs && \
-              xvfb-run -a npm test
-            "
         env:
           CI: true
 
