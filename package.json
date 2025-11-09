@@ -30,7 +30,7 @@
     "lint:clippy": "cargo clippy -- -D warnings",
     "fmt": "cargo fmt",
     "check": "npm run lint && npm test",
-    "bump": "bash scripts/version-bump.sh",
+    "bump": "node scripts/version-bump.mjs",
     "artifacts": "napi artifacts",
     "universal": "napi universal",
     "version": "napi version",
