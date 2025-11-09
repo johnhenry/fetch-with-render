@@ -1,0 +1,9 @@
+# Rust formatting configuration
+# This ensures consistent formatting between local development and CI
+
+# Use stable features only
+edition = "2021"
+
+# Formatting options to match CI
+max_width = 100
+use_small_heuristics = "Default"
