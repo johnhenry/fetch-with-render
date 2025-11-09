@@ -14,7 +14,9 @@
   "files": [
     "dist",
     "*.node",
-    "!src/**/*.rs"
+    "index.cjs",
+    "!src/**/*.rs",
+    "!*.tgz"
   ],
   "scripts": {
     "build": "npm run build:rust && npm run build:js",

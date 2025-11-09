@@ -31,10 +31,20 @@ jobs:
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             build: |
-              sudo apt-get update
-              sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-              rustup target add aarch64-unknown-linux-gnu
-              npm run build:rust -- --target aarch64-unknown-linux-gnu
+              # Use Docker with QEMU for ARM64 cross-compilation
+              docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+              docker run --rm -v $PWD:/build -w /build \
+                arm64v8/ubuntu:22.04 \
+                bash -c "
+                  apt-get update && \
+                  apt-get install -y curl build-essential libwebkit2gtk-4.0-dev libgtk-3-dev pkg-config && \
+                  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+                  . \$HOME/.cargo/env && \
+                  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+                  apt-get install -y nodejs && \
+                  npm install && \
+                  npm run build:rust
+                "
           - host: windows-latest
             target: x86_64-pc-windows-msvc
             build: npm run build:rust
@@ -84,11 +94,12 @@ jobs:
         run: npm run build:js
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
             *.node
+            index.cjs
             dist/
           if-no-files-found: error
 
@@ -102,6 +113,9 @@ jobs:
             target: x86_64-apple-darwin
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            use_docker: true
           - host: windows-latest
             target: x86_64-pc-windows-msvc
 
@@ -126,18 +140,35 @@ jobs:
         run: npm install
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: bindings-${{ matrix.settings.target }}
 
-      - name: Run tests
+      - name: Run tests (native)
+        if: matrix.settings.use_docker != true
         run: npm test
         env:
           CI: true
 
-      - name: Run tests (with xvfb on Linux)
-        if: matrix.settings.host == 'ubuntu-latest'
+      - name: Run tests (with xvfb on x64 Linux)
+        if: matrix.settings.host == 'ubuntu-latest' && matrix.settings.use_docker != true
         run: xvfb-run -a npm test
+        env:
+          CI: true
+
+      - name: Run tests (ARM64 Linux with Docker)
+        if: matrix.settings.use_docker == true
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker run --rm -v $PWD:/build -w /build \
+            arm64v8/ubuntu:22.04 \
+            bash -c "
+              apt-get update && \
+              apt-get install -y curl libwebkit2gtk-4.0-37 xvfb && \
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+              apt-get install -y nodejs && \
+              xvfb-run -a npm test
+            "
         env:
           CI: true
 
@@ -161,17 +192,32 @@ jobs:
         run: npm install
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Move artifacts to root
         run: |
-          mv artifacts/bindings-*/*.node .
-          ls -la *.node
+          # Move all .node binaries to root
+          find artifacts -name "*.node" -exec mv {} . \;
 
-      - name: Build JavaScript
-        run: npm run build:js
+          # Copy index.cjs from any artifact (they're all the same)
+          cp artifacts/bindings-x86_64-apple-darwin/index.cjs . || \
+          cp artifacts/bindings-aarch64-apple-darwin/index.cjs . || \
+          cp artifacts/bindings-x86_64-unknown-linux-gnu/index.cjs . || \
+          cp artifacts/bindings-aarch64-unknown-linux-gnu/index.cjs . || \
+          cp artifacts/bindings-x86_64-pc-windows-msvc/index.cjs .
+
+          # Copy dist/ from any artifact (they're all the same)
+          cp -r artifacts/bindings-x86_64-apple-darwin/dist . || \
+          cp -r artifacts/bindings-aarch64-apple-darwin/dist . || \
+          cp -r artifacts/bindings-x86_64-unknown-linux-gnu/dist . || \
+          cp -r artifacts/bindings-aarch64-unknown-linux-gnu/dist . || \
+          cp -r artifacts/bindings-x86_64-pc-windows-msvc/dist .
+
+          echo "Listing package contents:"
+          ls -la *.node *.cjs
+          ls -la dist/
 
       - name: List package contents
         run: npm pack --dry-run
@@ -192,7 +238,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
