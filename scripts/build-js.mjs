@@ -39,14 +39,22 @@ async function build() {
     join(distDir, 'render-worker.js')
   );
 
-  // Copy TypeScript definitions
-  await copyFile(
-    join(projectRoot, 'src', 'index.d.ts'),
-    join(distDir, 'index.d.ts')
-  );
+  // Copy TypeScript definitions if they exist (may not exist for cross-compiled targets)
+  try {
+    await copyFile(
+      join(projectRoot, 'src', 'index.d.ts'),
+      join(distDir, 'index.d.ts')
+    );
+    console.log('✓ TypeScript definitions copied to dist/');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.log('⚠ TypeScript definitions not found (expected for cross-compilation)');
+    } else {
+      throw err;
+    }
+  }
 
   console.log('✓ JavaScript files copied to dist/');
-  console.log('✓ TypeScript definitions copied to dist/');
 }
 
 build().catch(console.error);
