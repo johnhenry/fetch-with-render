@@ -5,7 +5,8 @@ use napi_derive::napi;
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::{mpsc, Arc, Mutex};
+use std::rc::Rc;
+use std::sync::mpsc;
 use std::time::Duration;
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoop};
@@ -17,15 +18,15 @@ use wry::WebViewBuilder;
 // Thread-local EventLoop - macOS requires EventLoop on main thread
 // Node.js calls us on the main thread, so this works perfectly
 thread_local! {
-    static EVENT_LOOP: RefCell<Option<EventLoop<()>>> = RefCell::new(None);
+    static EVENT_LOOP: RefCell<Option<EventLoop<()>>> = const { RefCell::new(None) };
 }
 
 // Render state for a single window
 struct RenderState {
     #[allow(dead_code)] // Must keep window alive for the duration of the render
     window: Window,
-    webview: Arc<Mutex<WebView>>,
-    html_result: Arc<Mutex<Option<String>>>,
+    webview: Rc<RefCell<WebView>>,
+    html_result: Rc<RefCell<Option<String>>>,
     result_tx: mpsc::Sender<std::result::Result<String, RenderError>>,
     start_time: std::time::Instant,
     timeout_duration: Duration,
@@ -130,8 +131,8 @@ fn setup_render(
 
     let window_id = window.id();
 
-    let html_result: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
-    let html_ipc = Arc::clone(&html_result);
+    let html_result: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
+    let html_ipc = Rc::clone(&html_result);
 
     let wait_for = opts.wait_for.clone();
     let selector = opts.selector.clone();
@@ -141,7 +142,7 @@ fn setup_render(
     let ipc_handler = move |msg: String| {
         if msg.starts_with("HTML:") {
             let html = msg.strip_prefix("HTML:").unwrap_or("");
-            *html_ipc.lock().unwrap() = Some(html.to_string());
+            *html_ipc.borrow_mut() = Some(html.to_string());
         }
     };
 
@@ -197,7 +198,7 @@ fn setup_render(
 
     let state = RenderState {
         window,
-        webview: Arc::new(Mutex::new(webview)),
+        webview: Rc::new(RefCell::new(webview)),
         html_result,
         result_tx,
         start_time: std::time::Instant::now(),
@@ -231,11 +232,10 @@ fn run_event_loop(event_loop: &mut EventLoop<()>, _target_window_id: WindowId) {
             // Process events for each window
             for (window_id, state) in states_map.iter_mut() {
                 // Check if we have a result
-                if state.html_result.lock().unwrap().is_some() {
+                if state.html_result.borrow().is_some() {
                     let result = state
                         .html_result
-                        .lock()
-                        .unwrap()
+                        .borrow_mut()
                         .take()
                         .ok_or(RenderError::Unknown("No HTML captured".to_string()));
                     let _ = state.result_tx.send(result);
@@ -257,28 +257,24 @@ fn run_event_loop(event_loop: &mut EventLoop<()>, _target_window_id: WindowId) {
                     ..
                 } = &event
                 {
-                    if event_window_id == window_id {
-                        match window_event {
-                            WindowEvent::CloseRequested => {
-                                let result = state.html_result.lock().unwrap().take().ok_or(
-                                    RenderError::Unknown(
-                                        "Window closed before HTML captured".to_string(),
-                                    ),
-                                );
-                                let _ = state.result_tx.send(result);
-                                completed_windows.push(*window_id);
-                            }
-                            _ => {}
-                        }
+                    if event_window_id == window_id
+                        && window_event == &WindowEvent::CloseRequested
+                    {
+                        let result = state.html_result.borrow_mut().take().ok_or(
+                            RenderError::Unknown(
+                                "Window closed before HTML captured".to_string(),
+                            ),
+                        );
+                        let _ = state.result_tx.send(result);
+                        completed_windows.push(*window_id);
                     }
                 }
 
                 // On MainEventsCleared, trigger checkAndExtract
                 if matches!(event, Event::MainEventsCleared) {
-                    if let Ok(webview) = state.webview.lock() {
-                        let _ = webview
-                            .evaluate_script("window.checkAndExtract && window.checkAndExtract()");
-                    }
+                    let webview = state.webview.borrow();
+                    let _ = webview
+                        .evaluate_script("window.checkAndExtract && window.checkAndExtract()");
                 }
             }
 
