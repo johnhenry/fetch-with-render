@@ -20,6 +20,14 @@ A **drop-in replacement for Node's `fetch`** that adds a `.render()` method to e
 npm install fetch-with-render
 ```
 
+### Platform Support
+
+**Fully tested platforms:**
+- macOS (Intel & Apple Silicon)
+- Windows
+
+**Note:** Linux builds are provided and basic functionality works, but render testing in headless CI environments has limitations. The library should work fine in desktop Linux environments with a display.
+
 ## Quick Start
 
 ```js

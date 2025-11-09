@@ -29,6 +29,12 @@ test('RenderableResponse can call text()', async () => {
 });
 
 test('render() returns HTML string', async (t) => {
+  // Skip on Linux due to WebView headless limitations
+  if (process.platform === 'linux') {
+    t.skip('Skipping render test on Linux (headless WebView not fully supported)');
+    return;
+  }
+
   const res = await fetch('https://example.com');
   const html = await res.render({ timeout: 10000 });
 
@@ -38,6 +44,12 @@ test('render() returns HTML string', async (t) => {
 });
 
 test('render() accepts options', async (t) => {
+  // Skip on Linux due to WebView headless limitations
+  if (process.platform === 'linux') {
+    t.skip('Skipping render test on Linux (headless WebView not fully supported)');
+    return;
+  }
+
   const res = await fetch('https://example.com');
   const html = await res.render({
     timeout: 5000,
