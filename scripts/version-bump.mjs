@@ -32,11 +32,7 @@ try {
   // Git operations
   execSync('git add package.json Cargo.toml package-lock.json Cargo.lock', { stdio: 'inherit' });
 
-  const commitMessage = `Bump version to ${newVersion}
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>`;
+  const commitMessage = `Bump version to ${newVersion}`;
 
   execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' });
   console.log('✅ Committed version bump');
