@@ -25,6 +25,7 @@
     "build:debug": "napi build --platform",
     "prepublishOnly": "node scripts/prepublish-check.mjs",
     "test": "node --test tests/basic.test.mjs",
+    "test:integration": "node --test tests/integration.test.mjs",
     "lint": "npm run lint:fmt && npm run lint:clippy",
     "lint:fmt": "cargo fmt -- --check",
     "lint:clippy": "cargo clippy -- -D warnings",
@@ -64,7 +65,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.0"
+    "@napi-rs/cli": "^2.18.0",
+    "http-server": "^14.1.1"
   },
   "engines": {
     "node": ">=18.0.0"
