@@ -263,6 +263,13 @@ jobs:
       - name: List package contents
         run: npm pack --dry-run
 
+      - name: Check npm authentication
+        run: |
+          echo "Testing npm whoami to verify authentication..."
+          npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish to npm
         run: npm publish --access public
         env:
