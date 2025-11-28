@@ -1,0 +1,7 @@
+# Example URL list for batch processing
+# Lines starting with # are comments and will be ignored
+
+https://example.com
+https://www.iana.org/domains/reserved
+
+# You can add more URLs, one per line

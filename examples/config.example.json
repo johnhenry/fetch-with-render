@@ -1,0 +1,14 @@
+{
+  "timeout": 10000,
+  "userAgent": "MyBot/1.0 (https://example.com/bot)",
+  "headers": {
+    "Accept": "text/html,application/xhtml+xml",
+    "Accept-Language": "en-US,en;q=0.9"
+  },
+  "cookies": [
+    "session=abc123def456",
+    "preferences=dark_mode"
+  ],
+  "format": "text",
+  "followRedirect": true
+}

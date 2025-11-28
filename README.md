@@ -2,7 +2,7 @@
 
 > `fetch`, but with real rendering.
 
-A **drop-in replacement for Node's `fetch`** that adds a `.render()` method to execute JavaScript and return fully rendered HTML using native system WebViews.
+A **drop-in replacement for Node's `fetch`** that adds a `.render()` method to execute JavaScript and return fully rendered HTML using native system WebViews. Also includes a powerful CLI tool for web scraping and API testing.
 
 ## Features
 
@@ -13,11 +13,27 @@ A **drop-in replacement for Node's `fetch`** that adds a `.render()` method to e
 - **Flexible waiting**: Wait for selectors, run custom scripts, or just grab everything
 - **Fast**: Native performance with minimal overhead
 - **TypeScript support**: Full type definitions included
+- **CLI tool**: Powerful command-line interface for web scraping and API testing
 
 ## Installation
 
+### As a Library
+
 ```bash
 npm install fetch-with-render
+```
+
+### As a CLI Tool
+
+```bash
+npm install -g fetch-with-render
+```
+
+Then use the `fetch-text` command:
+
+```bash
+fetch-text https://example.com
+fetch-text -r https://spa-site.com  # with JavaScript rendering
 ```
 
 ### Platform Support
@@ -28,7 +44,11 @@ npm install fetch-with-render
 
 **Note:** Linux builds are provided and basic functionality works, but render testing in headless CI environments has limitations. The library should work fine in desktop Linux environments with a display.
 
-## Quick Start
+---
+
+## Library Usage
+
+### Quick Start
 
 ```js
 import fetch from 'fetch-with-render';
@@ -42,30 +62,13 @@ const html = await res.render();
 console.log(html); // Fully rendered HTML
 ```
 
-## Try the Demos
+### API
 
-See it in action! After building the project, run:
-
-```bash
-npm run demo
-```
-
-This runs a quick demonstration showing the difference between standard fetch and rendered fetch. For more comprehensive demos:
-
-- `npm run demo:comparison` - Compare across multiple websites
-- `npm run demo:spa` - See how it handles Single Page Apps
-- `npm run demo:basic` - Simple usage example
-- `npm run demo:advanced` - Advanced features
-
-See [DEMOS.md](DEMOS.md) for detailed information about each demo.
-
-## API
-
-### `fetch(url, options)`
+#### `fetch(url, options)`
 
 Works exactly like Node's native `fetch`. Returns a `RenderableResponse` instead of a standard `Response`.
 
-### `response.render(options)`
+#### `response.render(options)`
 
 Renders the page in a native WebView and returns the final HTML.
 
@@ -80,9 +83,9 @@ Renders the page in a native WebView and returns the final HTML.
 
 **Returns:** `Promise<string>` - The rendered HTML
 
-## Examples
+### Examples
 
-### Basic Usage
+#### Basic Usage
 
 ```js
 import fetch from 'fetch-with-render';
@@ -92,7 +95,7 @@ const html = await res.render();
 console.log(html);
 ```
 
-### Wait for an Element
+#### Wait for an Element
 
 ```js
 const res = await fetch('https://spa-site.com');
@@ -102,7 +105,7 @@ const html = await res.render({
 });
 ```
 
-### Extract Specific Element
+#### Extract Specific Element
 
 ```js
 const res = await fetch('https://example.com');
@@ -111,7 +114,7 @@ const articleHtml = await res.render({
 });
 ```
 
-### Run Custom Script
+#### Run Custom Script
 
 ```js
 const res = await fetch('https://example.com');
@@ -128,28 +131,228 @@ const html = await res.render({
 });
 ```
 
-### Complete Example
+---
+
+## CLI Usage
+
+The `fetch-text` CLI tool provides a curl/wget-like interface with powerful features for web scraping, API testing, and content extraction.
+
+### Basic Commands
+
+```bash
+# Simple text extraction
+fetch-text https://example.com
+
+# With JavaScript rendering
+fetch-text -r https://spa-site.com
+
+# Get raw HTML
+fetch-text --raw https://example.com
+
+# Output as JSON with metadata
+fetch-text -f json https://example.com
+
+# Convert to Markdown
+fetch-text -f markdown https://example.com
+
+# Show help
+fetch-text --help
+```
+
+### CLI Options
+
+**Basic:**
+- `-h, --help` - Show help message
+- `-v, --version` - Show version
+- `--verbose` - Enable debug output
+- `--config <file>` - Load configuration from file
+
+**Rendering:**
+- `-r, --render` - Enable JavaScript rendering
+- `-t, --timeout <ms>` - Rendering timeout (default: 5000)
+- `-w, --wait-for <sel>` - Wait for CSS selector
+- `-s, --selector <sel>` - Extract specific element
+- `--script <code>` - Execute JavaScript
+
+**Output:**
+- `--raw` - Output raw HTML (no text extraction)
+- `-f, --format <type>` - Output format: text|html|markdown|json
+- `-q, --quiet` - Suppress progress indicators
+- `-o, --output <file>` - Write output to file
+
+**HTTP:**
+- `-X, --method <method>` - HTTP method (GET, POST, PUT, DELETE, etc.)
+- `-d, --data <data>` - Request body data
+- `-H, --header <header>` - Add custom header
+- `-A, --user-agent <ua>` - Set custom User-Agent
+- `--cookie <cookie>` - Send cookies
+- `--no-redirect` - Don't follow redirects
+
+**Batch:**
+- `-i, --input <file>` - Read URLs from file
+- `-o, --output <file>` - Write output to file
+
+### CLI Examples
+
+#### Web Scraping
+
+```bash
+# Extract article from blog
+fetch-text -r -s "article" https://blog.com/post > article.txt
+
+# Remove ads before extraction
+fetch-text -r --script "document.querySelectorAll('.ad').forEach(x => x.remove())" https://news.com
+
+# Wait for dynamic content
+fetch-text -r -w "#app-loaded" https://spa.com
+```
+
+#### API Testing
+
+```bash
+# POST JSON data
+fetch-text -X POST \
+  -d '{"name":"John","email":"john@example.com"}' \
+  -H "Content-Type: application/json" \
+  https://api.example.com/users
+
+# PUT request
+fetch-text -X PUT \
+  -d '{"status":"updated"}' \
+  -H "Content-Type: application/json" \
+  https://api.example.com/items/123
+
+# DELETE request
+fetch-text -X DELETE https://api.example.com/items/123
+
+# With authentication
+fetch-text -H "Authorization: Bearer token123" https://api.example.com/protected
+```
+
+#### Batch Processing
+
+```bash
+# Process multiple URLs from file
+fetch-text -i urls.txt -o results.txt
+
+# Convert multiple pages to markdown
+fetch-text -i urls.txt -f markdown -o combined.md
+```
+
+#### Output Formats
+
+```bash
+# Text (default) - clean extracted text
+fetch-text https://example.com
+
+# HTML - raw HTML source
+fetch-text -f html https://example.com
+
+# Markdown - converted to markdown
+fetch-text -f markdown https://blog.com/article > article.md
+
+# JSON - with full metadata
+fetch-text -f json https://example.com | jq .
+```
+
+#### Configuration File
+
+Create `~/.fetch-text.json`:
+
+```json
+{
+  "timeout": 10000,
+  "userAgent": "MyBot/1.0",
+  "headers": {
+    "Accept": "text/html"
+  },
+  "format": "text"
+}
+```
+
+Use it:
+
+```bash
+fetch-text --config ~/.fetch-text.json https://example.com
+```
+
+#### Verbose Mode
+
+```bash
+# Debug requests
+fetch-text --verbose https://example.com
+
+# Shows:
+# - Request URL and options
+# - Response headers and status
+# - Timing information
+# - Content length
+```
+
+---
+
+## Use Cases
+
+### Web Scraping
+
+Get the real rendered content of Single Page Applications (SPAs):
 
 ```js
-import fetch from 'fetch-with-render';
-
-const res = await fetch('https://news.ycombinator.com');
-
-if (!res.ok) {
-  throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-}
-
-const html = await res.render({
-  timeout: 10000,
-  waitFor: '.itemlist',
-  script: `
-    // Click "More" button if it exists
-    document.querySelector('.morelink')?.click();
-  `
-});
-
-console.log(html.length); // Full rendered page length
+const res = await fetch('https://react-app.com');
+const html = await res.render({ waitFor: '#root' });
 ```
+
+Or via CLI:
+```bash
+fetch-text -r -w "#root" https://react-app.com
+```
+
+### API Testing
+
+Test endpoints with different HTTP methods:
+
+```bash
+# Create
+fetch-text -X POST -d '{"title":"New Post"}' -H "Content-Type: application/json" https://api.example.com/posts
+
+# Read
+fetch-text https://api.example.com/posts/1
+
+# Update
+fetch-text -X PUT -d '{"title":"Updated"}' -H "Content-Type: application/json" https://api.example.com/posts/1
+
+# Delete
+fetch-text -X DELETE https://api.example.com/posts/1
+```
+
+### Content Extraction
+
+Extract specific content after all scripts run:
+
+```js
+const res = await fetch('https://blog.com/post/123');
+const content = await res.render({
+  selector: 'article',
+  script: 'document.querySelectorAll("script").forEach(s => s.remove())'
+});
+```
+
+Or via CLI:
+```bash
+fetch-text -r -s "article" --script "document.querySelectorAll('script').forEach(s => s.remove())" https://blog.com/post/123
+```
+
+### Monitoring
+
+```bash
+# Check if element exists
+fetch-text -r -w ".status-ok" https://status.example.com && echo "Up"
+
+# Get status as JSON
+fetch-text -f json https://api.example.com/health | jq .status
+```
+
+---
 
 ## Architecture
 
@@ -159,7 +362,7 @@ console.log(html.length); // Full rendered page length
 │  ┌───────────────────────────────────┐  │
 │  │  fetch-with-render                │  │
 │  │  • Wraps native fetch()           │  │
-│  │  • Adds .render() method          │  │
+│  │  │  Adds .render() method          │  │
 │  └───────────────────────────────────┘  │
 └─────────────────────────────────────────┘
                     │
@@ -184,46 +387,7 @@ console.log(html.length); // Full rendered page length
 └─────────────────────────────────────────┘
 ```
 
-## Use Cases
-
-### Web Scraping
-
-Get the real rendered content of Single Page Applications (SPAs):
-
-```js
-const res = await fetch('https://react-app.com');
-const html = await res.render({ waitFor: '#root' });
-```
-
-### Testing
-
-Test how your site renders after JavaScript execution:
-
-```js
-const res = await fetch('http://localhost:3000');
-const html = await res.render();
-assert(html.includes('<div id="app">'));
-```
-
-### Content Extraction
-
-Extract specific content after all scripts run:
-
-```js
-const res = await fetch('https://blog.com/post/123');
-const content = await res.render({
-  selector: 'article',
-  script: 'document.querySelectorAll("script").forEach(s => s.remove())'
-});
-```
-
-## Platform Support
-
-| Platform | WebView Engine | Status |
-|----------|---------------|---------|
-| macOS | WKWebView | ✅ Supported |
-| Linux | WebKitGTK | ✅ Supported |
-| Windows | WebView2 | ✅ Supported |
+---
 
 ## Comparison
 
@@ -237,14 +401,19 @@ const content = await res.render({
 | API complexity | Simple | Complex |
 | Chromium bundled | ❌ | ✅ |
 
-### vs Splash
+### vs curl/wget
 
-| Feature | fetch-with-render | Splash |
-|---------|-------------------|--------|
-| Installation | npm install | Docker required |
-| Language | JavaScript | Python/Lua |
-| Integration | Native Node.js | HTTP API |
-| Deployment | Simple | Complex |
+| Feature | curl/wget | fetch-text |
+|---------|-----------|------------|
+| Fetch raw HTML | ✅ | ✅ |
+| Extract text | ❌ | ✅ |
+| Render JavaScript | ❌ | ✅ |
+| Wait for elements | ❌ | ✅ |
+| Execute scripts | ❌ | ✅ |
+| Output formats | 1 | 4 (text, HTML, markdown, JSON) |
+| Batch processing | ❌ | ✅ |
+
+---
 
 ## Building from Source
 
@@ -257,7 +426,15 @@ npm run build
 
 # Development build (faster, unoptimized)
 npm run build:debug
+
+# Run tests
+npm test
+
+# Run demos
+npm run demo
 ```
+
+---
 
 ## Requirements
 
@@ -280,7 +457,11 @@ On Fedora:
 sudo dnf install webkit2gtk3-devel
 ```
 
+---
+
 ## Error Handling
+
+### Library
 
 ```js
 try {
@@ -297,29 +478,68 @@ try {
 }
 ```
 
+### CLI
+
+```bash
+# Check exit code
+if fetch-text https://example.com; then
+  echo "Success"
+else
+  echo "Failed"
+fi
+
+# Capture errors
+fetch-text https://example.com 2> error.log
+```
+
+---
+
 ## Performance Tips
 
 1. **Set reasonable timeouts**: Don't wait longer than necessary
 2. **Use `waitFor`**: More efficient than arbitrary delays
 3. **Extract selectors**: If you only need part of the page, use `selector`
 4. **Reuse connections**: The underlying fetch supports keep-alive
+5. **Use batch processing**: Process multiple URLs efficiently with `-i`
+6. **Cache with config files**: Store common settings in config files
 
-## Future Enhancements
+---
 
-- [ ] `.renderToImage()` - Screenshot support
-- [ ] Persistent sessions - Cookie/localStorage caching
-- [ ] Parallel render pool - Reuse WebView instances
-- [ ] Streaming API - Stream DOM diffs as they load
-- [ ] Network request interception
-- [ ] Custom user agent and headers in WebView
+## Documentation
+
+- **ARCHITECTURE.md** - Technical deep dive into implementation
+- **INSTALLATION.md** - Detailed setup instructions
+- **CHANGELOG.md** - Version history and changes
+- **CONTRIBUTING.md** - Contributing guidelines
+
+---
+
+## Demos
+
+After building, try these demos:
+
+```bash
+npm run demo              # Quick demonstration
+npm run demo:comparison   # Compare multiple websites
+npm run demo:spa          # SPA handling
+npm run demo:cli          # CLI features
+```
+
+---
 
 ## License
 
 MIT
 
+---
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
 
 ## Credits
 
@@ -327,3 +547,5 @@ Built with:
 - [napi-rs](https://napi.rs/) - Node.js native addon framework
 - [wry](https://github.com/tauri-apps/wry) - Cross-platform WebView library
 - [tokio](https://tokio.rs/) - Async runtime for Rust
+- [jsdom](https://github.com/jsdom/jsdom) - HTML parsing (CLI)
+- [turndown](https://github.com/mixmark-io/turndown) - HTML to Markdown (CLI)

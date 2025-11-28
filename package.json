@@ -11,8 +11,12 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "bin": {
+    "fetch-text": "./bin/cli.mjs"
+  },
   "files": [
     "dist",
+    "bin",
     "*.node",
     "index.cjs",
     "!src/**/*.rs",
@@ -39,7 +43,10 @@
     "demo:comparison": "node examples/comparison-demo.mjs",
     "demo:spa": "node examples/spa-scraping.mjs",
     "demo:basic": "node examples/basic.mjs",
-    "demo:advanced": "node examples/advanced.mjs"
+    "demo:advanced": "node examples/advanced.mjs",
+    "demo:cli": "./examples/cli-demo.sh",
+    "demo:cli:advanced": "./examples/cli-advanced-demo.sh",
+    "cli": "node bin/cli.mjs"
   },
   "napi": {
     "name": "fetch-with-render",
@@ -64,6 +71,10 @@
   ],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "jsdom": "^25.0.0",
+    "turndown": "^7.2.0"
+  },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.0",
     "http-server": "^14.1.1"
