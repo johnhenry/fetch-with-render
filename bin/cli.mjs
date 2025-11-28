@@ -1,20 +1,23 @@
 #!/usr/bin/env node
 
 import fetch from '../dist/index.js';
-import { JSDOM } from 'jsdom';
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import TurndownService from 'turndown';
 
 const version = '0.1.14';
 
 function showHelp() {
   console.log(`
-fetch-text v${version} - Fetch URLs and extract text content
+fetch-with-render v${version} - Fetch with automatic JavaScript rendering
 
 USAGE:
-  fetch-text [OPTIONS] <URL | URL-FILE>
+  fetch-with-render [OPTIONS] <URL>
+
+DESCRIPTION:
+  Like curl/wget, but automatically renders HTML pages with JavaScript.
+  For HTML responses, returns the fully rendered HTML after JS execution.
+  For non-HTML responses (JSON, text, etc.), returns content as-is.
 
 OPTIONS:
   Basic:
@@ -24,81 +27,60 @@ OPTIONS:
     --config <file>         Load configuration from file
 
   Rendering:
-    -r, --render            Render JavaScript before extracting text (slower)
     -t, --timeout <ms>      Timeout for rendering in milliseconds (default: 5000)
-    -w, --wait-for <sel>    CSS selector to wait for before extracting
+    -w, --wait-for <sel>    CSS selector to wait for before capturing
     -s, --selector <sel>    CSS selector to extract specific element
-    --script <code>         Execute JavaScript before extracting
-
-  Output:
-    --raw                   Output raw HTML instead of text
-    -f, --format <type>     Output format: text|html|markdown|json (default: text)
-    -q, --quiet             Suppress progress indicators
+    --script <code>         Execute JavaScript before capturing
 
   HTTP:
-    -X, --method <method>   HTTP method (GET, POST, PUT, DELETE, PATCH, etc.)
+    -X, --method <method>   HTTP method (GET, POST, PUT, DELETE, etc.)
     -d, --data <data>       Request body data
     -H, --header <header>   Add custom header (format: "Name: Value")
     -A, --user-agent <ua>   Set custom User-Agent
     --cookie <cookie>       Send cookies (format: "name=value")
     --no-redirect           Don't follow redirects (default: follow)
 
-  Batch:
-    -i, --input <file>      Read URLs from file (one per line)
+  Output:
     -o, --output <file>     Write output to file instead of stdout
+    -q, --quiet             Suppress progress indicators
 
 EXAMPLES:
-  # Simple text extraction
-  fetch-text https://example.com
+  # Fetch and render HTML page
+  fetch-with-render https://example.com
 
-  # With JavaScript rendering
-  fetch-text -r https://spa-site.com
+  # Fetch API endpoint (returns JSON as-is)
+  fetch-with-render https://api.example.com/data
 
-  # Custom headers
-  fetch-text -H "Authorization: Bearer token123" https://api.example.com
+  # Wait for element before capturing
+  fetch-with-render -w ".content" https://spa-site.com
 
-  # Custom User-Agent
-  fetch-text -A "MyBot/1.0" https://example.com
+  # Extract specific element
+  fetch-with-render -s "article" https://blog.com/post
 
-  # Markdown output
-  fetch-text -f markdown https://example.com
+  # POST request
+  fetch-with-render -X POST -d '{"key":"value"}' \\
+    -H "Content-Type: application/json" \\
+    https://api.example.com
 
-  # JSON output with metadata
-  fetch-text -f json https://example.com
+  # With authentication
+  fetch-with-render -H "Authorization: Bearer token" https://api.example.com
 
-  # Batch processing
-  fetch-text -i urls.txt -o results.txt
+  # Save to file
+  fetch-with-render https://example.com -o page.html
 
-  # With cookies
-  fetch-text --cookie "session=abc123" https://example.com
-
-  # Verbose mode
-  fetch-text --verbose https://example.com
-
-  # Load config file
-  fetch-text --config ~/.fetch-text.json https://example.com
-
-  # Custom HTTP method
-  fetch-text -X POST -d '{"key":"value"}' -H "Content-Type: application/json" https://api.example.com
-
-  # PUT request
-  fetch-text -X PUT -d "data" https://api.example.com/resource/123
+  # Custom timeout
+  fetch-with-render -t 10000 https://slow-site.com
 `);
 }
 
 function parseArgs(args) {
   const options = {
-    urls: [],
-    inputFile: null,
-    outputFile: null,
+    url: null,
     method: 'GET',
     data: null,
-    render: false,
     timeout: 5000,
     waitFor: null,
     selector: null,
-    raw: false,
-    format: 'text',
     script: null,
     headers: {},
     userAgent: null,
@@ -106,6 +88,7 @@ function parseArgs(args) {
     followRedirect: true,
     verbose: false,
     quiet: false,
+    outputFile: null,
     configFile: null,
   };
 
@@ -151,11 +134,6 @@ function parseArgs(args) {
         options.data = args[i];
         break;
 
-      case '-r':
-      case '--render':
-        options.render = true;
-        break;
-
       case '-t':
       case '--timeout':
         i++;
@@ -176,20 +154,6 @@ function parseArgs(args) {
       case '--selector':
         i++;
         options.selector = args[i];
-        break;
-
-      case '--raw':
-        options.raw = true;
-        break;
-
-      case '-f':
-      case '--format':
-        i++;
-        options.format = args[i];
-        if (!['text', 'html', 'markdown', 'json'].includes(options.format)) {
-          console.error('Error: format must be text, html, markdown, or json');
-          process.exit(1);
-        }
         break;
 
       case '--script':
@@ -225,12 +189,6 @@ function parseArgs(args) {
         options.followRedirect = false;
         break;
 
-      case '-i':
-      case '--input':
-        i++;
-        options.inputFile = args[i];
-        break;
-
       case '-o':
       case '--output':
         i++;
@@ -243,7 +201,12 @@ function parseArgs(args) {
           console.error('Run with --help for usage information');
           process.exit(1);
         }
-        options.urls.push(arg);
+        if (!options.url) {
+          options.url = arg;
+        } else {
+          console.error('Error: Multiple URLs provided');
+          process.exit(1);
+        }
     }
   }
 
@@ -252,12 +215,7 @@ function parseArgs(args) {
     loadConfig(options);
   }
 
-  // Load URLs from input file if specified
-  if (options.inputFile) {
-    loadUrlsFromFile(options);
-  }
-
-  if (options.urls.length === 0) {
+  if (!options.url) {
     console.error('Error: No URL provided');
     console.error('Run with --help for usage information');
     process.exit(1);
@@ -296,12 +254,6 @@ function loadConfig(options) {
     if (config.cookies && options.cookies.length === 0) {
       options.cookies = [...config.cookies];
     }
-    if (config.format && options.format === 'text') {
-      options.format = config.format;
-    }
-    if (config.followRedirect !== undefined) {
-      options.followRedirect = config.followRedirect;
-    }
     if (config.method && options.method === 'GET') {
       options.method = config.method.toUpperCase();
     }
@@ -318,99 +270,23 @@ function loadConfig(options) {
   }
 }
 
-function loadUrlsFromFile(options) {
-  try {
-    const fileContent = readFileSync(options.inputFile, 'utf-8');
-    const urls = fileContent
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0 && !line.startsWith('#'));
-
-    options.urls = [...options.urls, ...urls];
-
-    if (options.verbose) {
-      console.error(`Loaded ${urls.length} URLs from: ${options.inputFile}`);
-    }
-  } catch (error) {
-    console.error(`Error reading input file: ${error.message}`);
-    process.exit(1);
-  }
-}
-
-function extractText(html) {
-  try {
-    const dom = new JSDOM(html);
-    const document = dom.window.document;
-
-    // Remove script and style elements
-    const unwanted = document.querySelectorAll('script, style, noscript');
-    unwanted.forEach(el => el.remove());
-
-    // Get text content and clean it up
-    const text = document.body.textContent || '';
-
-    // Normalize whitespace
-    return text
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .join('\n');
-  } catch (error) {
-    console.error('Error parsing HTML:', error.message);
-    return html;
-  }
-}
-
-function htmlToMarkdown(html) {
-  try {
-    const turndownService = new TurndownService({
-      headingStyle: 'atx',
-      codeBlockStyle: 'fenced',
-    });
-    return turndownService.turndown(html);
-  } catch (error) {
-    console.error('Error converting to markdown:', error.message);
-    return html;
-  }
-}
-
-function formatOutput(content, format, url, metadata = {}) {
-  switch (format) {
-    case 'html':
-      return content;
-
-    case 'markdown':
-      return htmlToMarkdown(content);
-
-    case 'json':
-      return JSON.stringify({
-        url,
-        timestamp: new Date().toISOString(),
-        content: extractText(content),
-        html: content,
-        ...metadata,
-      }, null, 2);
-
-    case 'text':
-    default:
-      return extractText(content);
-  }
-}
-
 function showProgress(message) {
   console.error(`[${new Date().toISOString()}] ${message}`);
 }
 
-async function fetchUrl(url, options) {
-  const startTime = Date.now();
+function isHtmlResponse(contentType) {
+  if (!contentType) return false;
+  return contentType.includes('text/html') || contentType.includes('application/xhtml');
+}
 
-  if (options.verbose) {
-    showProgress(`Fetching: ${url}`);
-  } else if (!options.quiet && options.urls.length > 1) {
-    showProgress(`Processing: ${url}`);
-  }
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
 
   try {
+    if (options.verbose) {
+      showProgress(`Fetching: ${options.url}`);
+    }
+
     // Build fetch options
     const fetchOptions = {
       method: options.method,
@@ -436,27 +312,36 @@ async function fetchUrl(url, options) {
     }
 
     if (options.verbose) {
-      showProgress(`Fetch options: ${JSON.stringify(fetchOptions, null, 2)}`);
+      showProgress(`Request: ${options.method} ${options.url}`);
+      if (Object.keys(fetchOptions).length > 2 || fetchOptions.headers) {
+        showProgress(`Options: ${JSON.stringify(fetchOptions, null, 2)}`);
+      }
     }
 
     // Fetch the URL
-    const response = await fetch(url, fetchOptions);
+    const startTime = Date.now();
+    const response = await fetch(options.url, fetchOptions);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      console.error(`Error: HTTP ${response.status} ${response.statusText}`);
+      process.exit(1);
     }
 
-    let html;
-    const metadata = {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries()),
-    };
+    const contentType = response.headers.get('content-type');
+    const isHtml = isHtmlResponse(contentType);
 
-    // Render if requested
-    if (options.render) {
+    if (options.verbose) {
+      showProgress(`Response: ${response.status} ${response.statusText}`);
+      showProgress(`Content-Type: ${contentType || 'unknown'}`);
+      showProgress(`Is HTML: ${isHtml}`);
+    }
+
+    let output;
+
+    if (isHtml) {
+      // HTML response - render it
       if (options.verbose) {
-        showProgress('Rendering with JavaScript...');
+        showProgress('Rendering HTML with JavaScript...');
       }
 
       const renderOptions = {};
@@ -465,101 +350,44 @@ async function fetchUrl(url, options) {
       if (options.selector) renderOptions.selector = options.selector;
       if (options.script) renderOptions.script = options.script;
 
-      html = await response.render(renderOptions);
-      metadata.rendered = true;
-    } else {
-      html = await response.text();
-      metadata.rendered = false;
-    }
+      output = await response.render(renderOptions);
 
-    const elapsed = Date.now() - startTime;
-    metadata.fetchTime = elapsed;
-
-    if (options.verbose) {
-      showProgress(`Completed in ${elapsed}ms`);
-      showProgress(`Content length: ${html.length} bytes`);
-    }
-
-    // Format output based on options
-    let output;
-    if (options.raw) {
-      output = html;
-    } else {
-      output = formatOutput(html, options.format, url, metadata);
-    }
-
-    return { success: true, url, output, metadata };
-
-  } catch (error) {
-    if (options.verbose) {
-      showProgress(`Error: ${error.message}`);
-    }
-    return { success: false, url, error: error.message };
-  }
-}
-
-async function main() {
-  const options = parseArgs(process.argv.slice(2));
-
-  const results = [];
-  let outputBuffer = '';
-
-  // Process all URLs
-  for (let i = 0; i < options.urls.length; i++) {
-    const url = options.urls[i];
-    const result = await fetchUrl(url, options);
-    results.push(result);
-
-    if (result.success) {
-      if (options.urls.length === 1) {
-        // Single URL - output directly
-        outputBuffer = result.output;
-      } else {
-        // Multiple URLs - format with separators
-        outputBuffer += `\n${'='.repeat(70)}\n`;
-        outputBuffer += `URL: ${result.url}\n`;
-        outputBuffer += `${'='.repeat(70)}\n`;
-        outputBuffer += result.output;
-        outputBuffer += '\n';
+      if (options.verbose) {
+        const elapsed = Date.now() - startTime;
+        showProgress(`Rendered in ${elapsed}ms`);
+        showProgress(`Output length: ${output.length} bytes`);
       }
     } else {
-      const errorMsg = `Error fetching ${result.url}: ${result.error}`;
-      if (!options.quiet) {
-        console.error(errorMsg);
+      // Non-HTML response - return as-is
+      if (options.verbose) {
+        showProgress('Non-HTML response, returning as-is');
       }
-      if (options.urls.length > 1) {
-        outputBuffer += `\n${errorMsg}\n`;
+
+      output = await response.text();
+
+      if (options.verbose) {
+        const elapsed = Date.now() - startTime;
+        showProgress(`Completed in ${elapsed}ms`);
+        showProgress(`Output length: ${output.length} bytes`);
       }
     }
-  }
 
-  // Write output
-  if (options.outputFile) {
-    try {
-      const { writeFileSync } = await import('fs');
-      writeFileSync(options.outputFile, outputBuffer);
+    // Write output
+    if (options.outputFile) {
+      writeFileSync(options.outputFile, output);
       if (!options.quiet) {
         console.error(`Output written to: ${options.outputFile}`);
       }
-    } catch (error) {
-      console.error(`Error writing output file: ${error.message}`);
-      process.exit(1);
+    } else {
+      console.log(output);
     }
-  } else {
-    console.log(outputBuffer);
-  }
 
-  // Exit with error if any URLs failed
-  const failures = results.filter(r => !r.success);
-  if (failures.length > 0) {
+  } catch (error) {
+    console.error('Error:', error.message);
     if (options.verbose) {
-      showProgress(`Failed: ${failures.length}/${results.length} URLs`);
+      console.error(error.stack);
     }
     process.exit(1);
-  }
-
-  if (options.verbose) {
-    showProgress(`Successfully processed ${results.length} URL(s)`);
   }
 }
 

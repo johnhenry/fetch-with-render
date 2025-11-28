@@ -29,11 +29,10 @@ npm install fetch-with-render
 npm install -g fetch-with-render
 ```
 
-Then use the `fetch-text` command:
+Then use the `fetch-with-render` command:
 
 ```bash
-fetch-text https://example.com
-fetch-text -r https://spa-site.com  # with JavaScript rendering
+fetch-with-render https://example.com
 ```
 
 ### Platform Support
@@ -135,28 +134,25 @@ const html = await res.render({
 
 ## CLI Usage
 
-The `fetch-text` CLI tool provides a curl/wget-like interface with powerful features for web scraping, API testing, and content extraction.
+The `fetch-with-render` CLI tool provides a curl/wget-like interface that automatically renders HTML pages with JavaScript execution.
 
 ### Basic Commands
 
 ```bash
-# Simple text extraction
-fetch-text https://example.com
+# Fetch and render HTML page (automatic)
+fetch-with-render https://example.com
 
-# With JavaScript rendering
-fetch-text -r https://spa-site.com
+# Fetch API endpoint (returns JSON as-is)
+fetch-with-render https://api.example.com/data
 
-# Get raw HTML
-fetch-text --raw https://example.com
+# Wait for element before capturing
+fetch-with-render -w ".content" https://spa-site.com
 
-# Output as JSON with metadata
-fetch-text -f json https://example.com
-
-# Convert to Markdown
-fetch-text -f markdown https://example.com
+# Extract specific element
+fetch-with-render -s "article" https://blog.com/post
 
 # Show help
-fetch-text --help
+fetch-with-render --help
 ```
 
 ### CLI Options
@@ -168,15 +164,12 @@ fetch-text --help
 - `--config <file>` - Load configuration from file
 
 **Rendering:**
-- `-r, --render` - Enable JavaScript rendering
 - `-t, --timeout <ms>` - Rendering timeout (default: 5000)
 - `-w, --wait-for <sel>` - Wait for CSS selector
 - `-s, --selector <sel>` - Extract specific element
-- `--script <code>` - Execute JavaScript
+- `--script <code>` - Execute JavaScript before capturing
 
 **Output:**
-- `--raw` - Output raw HTML (no text extraction)
-- `-f, --format <type>` - Output format: text|html|markdown|json
 - `-q, --quiet` - Suppress progress indicators
 - `-o, --output <file>` - Write output to file
 
@@ -188,76 +181,55 @@ fetch-text --help
 - `--cookie <cookie>` - Send cookies
 - `--no-redirect` - Don't follow redirects
 
-**Batch:**
-- `-i, --input <file>` - Read URLs from file
-- `-o, --output <file>` - Write output to file
-
 ### CLI Examples
 
 #### Web Scraping
 
 ```bash
-# Extract article from blog
-fetch-text -r -s "article" https://blog.com/post > article.txt
+# Fetch and render HTML page
+fetch-with-render https://example.com
 
-# Remove ads before extraction
-fetch-text -r --script "document.querySelectorAll('.ad').forEach(x => x.remove())" https://news.com
+# Wait for element before capturing
+fetch-with-render -w ".content" https://spa-site.com
 
-# Wait for dynamic content
-fetch-text -r -w "#app-loaded" https://spa.com
+# Extract specific element
+fetch-with-render -s "article" https://blog.com/post
+
+# Execute JavaScript before capturing
+fetch-with-render --script "document.querySelectorAll('.ad').forEach(x => x.remove())" https://news.com
+
+# Save to file
+fetch-with-render https://example.com -o page.html
+
+# Custom timeout
+fetch-with-render -t 10000 https://slow-site.com
 ```
 
 #### API Testing
 
 ```bash
 # POST JSON data
-fetch-text -X POST \
+fetch-with-render -X POST \
   -d '{"name":"John","email":"john@example.com"}' \
   -H "Content-Type: application/json" \
   https://api.example.com/users
 
 # PUT request
-fetch-text -X PUT \
+fetch-with-render -X PUT \
   -d '{"status":"updated"}' \
   -H "Content-Type: application/json" \
   https://api.example.com/items/123
 
 # DELETE request
-fetch-text -X DELETE https://api.example.com/items/123
+fetch-with-render -X DELETE https://api.example.com/items/123
 
 # With authentication
-fetch-text -H "Authorization: Bearer token123" https://api.example.com/protected
-```
-
-#### Batch Processing
-
-```bash
-# Process multiple URLs from file
-fetch-text -i urls.txt -o results.txt
-
-# Convert multiple pages to markdown
-fetch-text -i urls.txt -f markdown -o combined.md
-```
-
-#### Output Formats
-
-```bash
-# Text (default) - clean extracted text
-fetch-text https://example.com
-
-# HTML - raw HTML source
-fetch-text -f html https://example.com
-
-# Markdown - converted to markdown
-fetch-text -f markdown https://blog.com/article > article.md
-
-# JSON - with full metadata
-fetch-text -f json https://example.com | jq .
+fetch-with-render -H "Authorization: Bearer token123" https://api.example.com/protected
 ```
 
 #### Configuration File
 
-Create `~/.fetch-text.json`:
+Create `config.json`:
 
 ```json
 {
@@ -265,22 +237,21 @@ Create `~/.fetch-text.json`:
   "userAgent": "MyBot/1.0",
   "headers": {
     "Accept": "text/html"
-  },
-  "format": "text"
+  }
 }
 ```
 
 Use it:
 
 ```bash
-fetch-text --config ~/.fetch-text.json https://example.com
+fetch-with-render --config config.json https://example.com
 ```
 
 #### Verbose Mode
 
 ```bash
 # Debug requests
-fetch-text --verbose https://example.com
+fetch-with-render --verbose https://example.com
 
 # Shows:
 # - Request URL and options
@@ -304,7 +275,7 @@ const html = await res.render({ waitFor: '#root' });
 
 Or via CLI:
 ```bash
-fetch-text -r -w "#root" https://react-app.com
+fetch-with-render -w "#root" https://react-app.com
 ```
 
 ### API Testing
@@ -313,16 +284,16 @@ Test endpoints with different HTTP methods:
 
 ```bash
 # Create
-fetch-text -X POST -d '{"title":"New Post"}' -H "Content-Type: application/json" https://api.example.com/posts
+fetch-with-render -X POST -d '{"title":"New Post"}' -H "Content-Type: application/json" https://api.example.com/posts
 
 # Read
-fetch-text https://api.example.com/posts/1
+fetch-with-render https://api.example.com/posts/1
 
 # Update
-fetch-text -X PUT -d '{"title":"Updated"}' -H "Content-Type: application/json" https://api.example.com/posts/1
+fetch-with-render -X PUT -d '{"title":"Updated"}' -H "Content-Type: application/json" https://api.example.com/posts/1
 
 # Delete
-fetch-text -X DELETE https://api.example.com/posts/1
+fetch-with-render -X DELETE https://api.example.com/posts/1
 ```
 
 ### Content Extraction
@@ -339,17 +310,17 @@ const content = await res.render({
 
 Or via CLI:
 ```bash
-fetch-text -r -s "article" --script "document.querySelectorAll('script').forEach(s => s.remove())" https://blog.com/post/123
+fetch-with-render -s "article" --script "document.querySelectorAll('script').forEach(s => s.remove())" https://blog.com/post/123
 ```
 
 ### Monitoring
 
 ```bash
 # Check if element exists
-fetch-text -r -w ".status-ok" https://status.example.com && echo "Up"
+fetch-with-render -w ".status-ok" https://status.example.com && echo "Up"
 
-# Get status as JSON
-fetch-text -f json https://api.example.com/health | jq .status
+# Get API response
+fetch-with-render https://api.example.com/health | jq .status
 ```
 
 ---
@@ -403,15 +374,14 @@ fetch-text -f json https://api.example.com/health | jq .status
 
 ### vs curl/wget
 
-| Feature | curl/wget | fetch-text |
-|---------|-----------|------------|
+| Feature | curl/wget | fetch-with-render |
+|---------|-----------|-------------------|
 | Fetch raw HTML | ✅ | ✅ |
-| Extract text | ❌ | ✅ |
-| Render JavaScript | ❌ | ✅ |
+| Render JavaScript | ❌ | ✅ (automatic for HTML) |
 | Wait for elements | ❌ | ✅ |
 | Execute scripts | ❌ | ✅ |
-| Output formats | 1 | 4 (text, HTML, markdown, JSON) |
-| Batch processing | ❌ | ✅ |
+| Auto-detect content type | ❌ | ✅ |
+| Extract elements | ❌ | ✅ |
 
 ---
 
@@ -482,14 +452,14 @@ try {
 
 ```bash
 # Check exit code
-if fetch-text https://example.com; then
+if fetch-with-render https://example.com; then
   echo "Success"
 else
   echo "Failed"
 fi
 
 # Capture errors
-fetch-text https://example.com 2> error.log
+fetch-with-render https://example.com 2> error.log
 ```
 
 ---
@@ -500,8 +470,7 @@ fetch-text https://example.com 2> error.log
 2. **Use `waitFor`**: More efficient than arbitrary delays
 3. **Extract selectors**: If you only need part of the page, use `selector`
 4. **Reuse connections**: The underlying fetch supports keep-alive
-5. **Use batch processing**: Process multiple URLs efficiently with `-i`
-6. **Cache with config files**: Store common settings in config files
+5. **Cache with config files**: Store common settings in config files
 
 ---
 
@@ -547,5 +516,3 @@ Built with:
 - [napi-rs](https://napi.rs/) - Node.js native addon framework
 - [wry](https://github.com/tauri-apps/wry) - Cross-platform WebView library
 - [tokio](https://tokio.rs/) - Async runtime for Rust
-- [jsdom](https://github.com/jsdom/jsdom) - HTML parsing (CLI)
-- [turndown](https://github.com/mixmark-io/turndown) - HTML to Markdown (CLI)

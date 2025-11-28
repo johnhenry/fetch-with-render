@@ -12,7 +12,7 @@
     }
   },
   "bin": {
-    "fetch-text": "./bin/cli.mjs"
+    "fetch-with-render": "./bin/cli.mjs"
   },
   "files": [
     "dist",
